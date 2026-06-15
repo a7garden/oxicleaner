@@ -50,9 +50,9 @@ pub enum Command {
         /// 시각(시): 0 ~ 23. 기본 새벽 3시.
         #[arg(long, default_value_t = 3)]
         hour: u32,
-        /// 보존 일수.
-        #[arg(long, default_value_t = 30)]
-        days: u32,
+        /// 보존 일수 (지정 안 하면 config.toml 의 days 또는 30).
+        #[arg(long)]
+        days: Option<u32>,
     },
 
     /// launchd 스케줄 비활성화(제거).
@@ -90,12 +90,23 @@ impl Cli {
                 hour,
                 days,
             }) => {
-                let (root, cfg_days) = config::resolve(self.root.as_deref(), Some(days));
+                let (root, cfg_days) = config::resolve(self.root.as_deref(), days);
                 let cfg = config::Config {
                     root: root.clone(),
                     days: cfg_days,
                 };
                 config::save(&cfg)?;
+
+                // 사전 검증: cargo-sweep 이 설치되어 있어야 한다.
+                // 설치되지 않았으면 지금 알려주고, 조용한 백그라운드 실패를 방지한다.
+                sweep::find_cargo_sweep().map_err(|e| {
+                    anyhow::anyhow!(
+                        "{}
+
+  먼저 설치하세요: cargo install cargo-sweep",
+                        e
+                    )
+                })?;
 
                 // 핵심: 스케줄러가 가리킬 바이너리를 ~/.oxicleaner/oxicleaner 로 복사한다.
                 // oxicleaner 자신의 target/ 도 sweep 대상이므로 target/ 안의 바이너리를
@@ -273,4 +284,42 @@ pub(crate) fn install_self_binary() -> Result<PathBuf> {
         std::fs::set_permissions(&dest, perms)?;
     }
     Ok(dest)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_weekday_name() {
+        assert_eq!(weekday_name(0), "일요일");
+        assert_eq!(weekday_name(1), "월요일");
+        assert_eq!(weekday_name(2), "화요일");
+        assert_eq!(weekday_name(3), "수요일");
+        assert_eq!(weekday_name(4), "목요일");
+        assert_eq!(weekday_name(5), "금요일");
+        assert_eq!(weekday_name(6), "토요일");
+        assert_eq!(weekday_name(99), "?");
+    }
+
+    #[test]
+    fn test_fmt_ts() {
+        // 한국 시간대 (+09:00)
+        let ts = "2026-06-15T16:11:43.604301+09:00";
+        assert_eq!(fmt_ts(ts), "2026-06-15 16:11");
+
+        // UTC
+        let ts = "2026-06-15T07:11:43.604301Z";
+        assert_eq!(fmt_ts(ts), "2026-06-15 07:11");
+
+        // 음수 시간대
+        let ts = "2026-06-15T03:11:43.000000-04:00";
+        assert_eq!(fmt_ts(ts), "2026-06-15 03:11");
+    }
+
+    #[test]
+    fn test_fmt_ts_fallback_on_bad_input() {
+        let ts = "not-a-timestamp";
+        assert_eq!(fmt_ts(ts), "not-a-timestamp");
+    }
 }

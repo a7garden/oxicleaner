@@ -140,7 +140,12 @@ fn parse_output(stdout: &str) -> (Vec<SweptProject>, Option<String>) {
             let freed = if action.contains("nothing") {
                 None
             } else {
-                action.rsplit_once(": ").map(|(_, s)| s.trim().to_string())
+                // dry-run: "Would clean: 516.33 MiB"  →  ": " 뒤
+                // live:   "Cleaned 516.33 MiB"       →  공백 뒤
+                action
+                    .split_once(": ")
+                    .or_else(|| action.split_once(' '))
+                    .map(|(_, s)| s.trim().to_string())
             };
             projects.push(SweptProject {
                 path: path.to_string(),
@@ -203,5 +208,72 @@ fn mode_str(dry_run: bool) -> &'static str {
         "dry-run"
     } else {
         "live"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_output_dry_run() {
+        let stdout = "[INFO] Would clean: 516.33 MiB from \"/Volumes/MERCURY/PROJECTS/cardion/target\"\n[INFO] Total amount: 516.33 MiB\n";
+        let (projects, total) = parse_output(stdout);
+        assert_eq!(projects.len(), 1);
+        assert_eq!(projects[0].path, "/Volumes/MERCURY/PROJECTS/cardion/target");
+        assert_eq!(projects[0].freed.as_deref(), Some("516.33 MiB"));
+        assert_eq!(total.as_deref(), Some("516.33 MiB"));
+    }
+
+    #[test]
+    fn test_parse_output_live() {
+        let stdout = "[INFO] Cleaned 10.10 GiB from \"/Volumes/MERCURY/PROJECTS/oxibrowser/target\"\n[INFO] Total amount: 10.10 GiB\n";
+        let (projects, total) = parse_output(stdout);
+        assert_eq!(projects.len(), 1);
+        assert_eq!(projects[0].freed.as_deref(), Some("10.10 GiB"));
+        assert_eq!(total.as_deref(), Some("10.10 GiB"));
+    }
+
+    #[test]
+    fn test_parse_output_nothing() {
+        let stdout = "[INFO] Cleaned nothing from \"/Volumes/MERCURY/PROJECTS/oxi/target\"\n[INFO] Total amount: 0.00 B\n";
+        let (projects, total) = parse_output(stdout);
+        assert_eq!(projects.len(), 1);
+        assert!(projects[0].freed.is_none());
+        assert_eq!(total.as_deref(), Some("0.00 B"));
+    }
+
+    #[test]
+    fn test_parse_output_multiple_projects() {
+        let stdout = "\
+[INFO] Cleaned 1.00 GiB from \"/a/target\"
+[INFO] Cleaned nothing from \"/b/target\"
+[INFO] Cleaned 2.00 GiB from \"/c/target\"
+[INFO] Total amount: 3.00 GiB
+";
+        let (projects, total) = parse_output(stdout);
+        assert_eq!(projects.len(), 3);
+        assert_eq!(projects[0].freed.as_deref(), Some("1.00 GiB"));
+        assert!(projects[1].freed.is_none());
+        assert_eq!(projects[2].freed.as_deref(), Some("2.00 GiB"));
+        assert_eq!(total.as_deref(), Some("3.00 GiB"));
+    }
+
+    #[test]
+    fn test_mode_str() {
+        assert_eq!(mode_str(true), "dry-run");
+        assert_eq!(mode_str(false), "live");
+    }
+
+    #[test]
+    fn test_find_cargo_sweep_returns_path_or_error() {
+        // cargo-sweep 이 설치되어 있으면 Ok, 없으면 Err (둘 다 허용).
+        match find_cargo_sweep() {
+            Ok(p) => assert!(p.exists()),
+            Err(e) => assert!(
+                e.to_string().contains("설치"),
+                "에러 메시지에 설치 안내가 있어야 함: {e}"
+            ),
+        }
     }
 }

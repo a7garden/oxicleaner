@@ -73,3 +73,50 @@ pub fn resolve(cli_root: Option<&Path>, cli_days: Option<u32>) -> (PathBuf, u32)
         .unwrap_or(30);
     (root, days)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Config 의 toml 직렬화/역직렬화가 올바른지.
+    #[test]
+    fn test_serde_roundtrip() {
+        let cfg = Config {
+            root: PathBuf::from("/Volumes/MERCURY/PROJECTS"),
+            days: 14,
+        };
+        let s = toml::to_string_pretty(&cfg).unwrap();
+        assert!(s.contains("/Volumes/MERCURY/PROJECTS"));
+        assert!(s.contains("days = 14"));
+
+        let loaded: Config = toml::from_str(&s).unwrap();
+        assert_eq!(loaded.root, cfg.root);
+        assert_eq!(loaded.days, cfg.days);
+    }
+
+    /// Config 의 기본값.
+    #[test]
+    fn test_default_values() {
+        let cfg = Config::default();
+        assert_eq!(cfg.days, 30);
+        assert!(!cfg.root.as_os_str().is_empty());
+    }
+
+    /// resolve: CLI 인자가 없을 때 config 또는 기본값 사용.
+    #[test]
+    fn test_resolve_defaults() {
+        // config::load() 가 실제 파일을 읽으므로 특정 값이 아닌
+        // 유효한 범위 내인지만 확인한다.
+        let (root, days) = resolve(None, None);
+        assert!(!root.as_os_str().is_empty(), "루트는 항상 있어야 함");
+        assert!(days > 0 && days <= 365, "days 는 1~365 범위: {days}");
+    }
+
+    /// resolve: CLI 인자가 config 보다 우선.
+    #[test]
+    fn test_resolve_prefers_cli() {
+        // CLI 에서 Some(14) → 14 (config 무시)
+        let (_, days) = resolve(None, Some(14));
+        assert_eq!(days, 14);
+    }
+}

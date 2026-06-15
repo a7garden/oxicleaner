@@ -264,6 +264,16 @@ fn apply(s: Setup) -> Result<()> {
     println!("\n✓ config.toml 저장됨 (~/.oxicleaner/config.toml)");
 
     if s.schedule {
+        // 사전 검증: cargo-sweep 이 설치되어 있어야 스케줄이 백그라운드에서 조용히 실패하지 않는다.
+        sweep::find_cargo_sweep().map_err(|e| {
+            anyhow::anyhow!(
+                "{}
+
+  먼저 설치하세요: cargo install cargo-sweep",
+                e
+            )
+        })?;
+
         let installed_bin = crate::cli::install_self_binary()?;
         schedule::enable(
             s.weekday,

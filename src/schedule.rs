@@ -109,6 +109,18 @@ fn render_plist(weekday: u32, hour: u32, days: u32, root: &str, binary: &str) ->
         .to_string_lossy()
         .into_owned();
 
+    // XML 엔티티 이스케이프 — 경로/바이너리에 & < > " 가 있으면 plist 가 깨진다.
+    fn esc(s: &str) -> String {
+        s.replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+            .replace('"', "&quot;")
+    }
+    let binary_esc = esc(binary);
+    let root_esc = esc(root);
+    let home_esc = esc(&home);
+    let path_env_esc = esc(&path_env);
+
     format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -158,15 +170,15 @@ fn render_plist(weekday: u32, hour: u32, days: u32, root: &str, binary: &str) ->
 </plist>
 "#,
         label = LABEL,
-        binary = binary,
+        binary = binary_esc,
         days = days,
-        root = root,
+        root = root_esc,
         weekday = weekday,
         hour = hour,
         log_out = log_out,
         log_err = log_err,
-        path_env = path_env,
-        home = home,
+        path_env = path_env_esc,
+        home = home_esc,
     )
 }
 
@@ -176,4 +188,50 @@ fn uid() -> Result<String> {
         .output()
         .context("id -u 실행 실패")?;
     Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// render_plist: 반드시 유효한 XML plist 여야 한다.
+    /// XML 선언, DOCTYPE, plist/schema 가 포함되어야 하고 인자가 위치에 맞게 삽입되어야 함.
+    #[test]
+    fn test_render_plist_basic() {
+        let plist = render_plist(0, 3, 30, "/Volumes/MERCURY/PROJECTS", "/usr/bin/oxicleaner");
+        assert!(plist.starts_with(r#"<?xml"#));
+        assert!(plist.contains("<integer>0</integer>"), "weekday 0");
+        assert!(plist.contains("<integer>3</integer>"), "hour 3");
+        // days 는 ProgramArguments 에서 <string> 으로 쓰임
+        assert!(plist.contains("<string>30</string>"), "days 30");
+        assert!(plist.contains("ProgramArguments"));
+        assert!(plist.contains("StartCalendarInterval"));
+        assert!(plist.contains("EnvironmentVariables"));
+    }
+
+    /// XML escape: 특수 문자가 올바르게 변환되는지.
+    #[test]
+    fn test_render_plist_xml_escape() {
+        let binary = "/Users/x&y/bin/<oxicleaner>\".exe";
+        let root = "/path/with/\"quotes\"&ampersands";
+        let plist = render_plist(0, 3, 30, root, binary);
+        // 원래 문자는 XML 에 없어야 함
+        assert!(!plist.contains("&y"), "& 는 &amp; 로 이스케이프되어야 함");
+        assert!(
+            !plist.contains("<oxicleaner"),
+            "< 는 &lt; 로 이스케이프되어야 함"
+        );
+        assert!(
+            !plist.contains("\"quotes"),
+            "\" 는 &quot; 로 이스케이프되어야 함"
+        );
+        // 이스케이프된 버전이 있어야 함
+        assert!(plist.contains("x&amp;y"));
+        assert!(plist.contains("&lt;oxicleaner"));
+        assert!(plist.contains("&quot;quotes"));
+        assert!(
+            plist.contains("&amp;ampersands"),
+            "&amp; 의 & 도 이스케이프 필요"
+        );
+    }
 }
