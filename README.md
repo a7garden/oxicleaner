@@ -68,13 +68,18 @@ cp target/release/oxicleaner ~/.cargo/bin/
 ## Usage
 
 ```bash
+# 🆕 Interactive setup wizard (recommended first run)
+oxicleaner setup
+#   → walks you through root, retention, schedule, weekday/time
+#   → writes config.toml, enables launchd, optionally runs first sweep
+
 # Clean now, keeping artifacts from the last 30 days
 oxicleaner sweep
 oxicleaner sweep --days 60
 oxicleaner sweep --dry-run          # preview only — deletes nothing
 oxicleaner sweep --root ~/projects  # override scan root
 
-# Enable the weekly schedule (default: every Sunday 03:00, keep 30d)
+# Enable the weekly schedule (non-interactive)
 oxicleaner enable
 oxicleaner enable --weekday 5 --hour 4 --days 45   # Fridays 04:00, keep 45d
 

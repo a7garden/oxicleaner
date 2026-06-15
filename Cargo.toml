@@ -1,6 +1,6 @@
 [package]
 name = "oxicleaner"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Recursive Rust target/ cleaner with launchd scheduling"
 license = "MIT"
@@ -19,6 +19,7 @@ toml = "0.8"
 anyhow = "1"
 dirs = "5"
 chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+inquire = "0.9"
 
 [profile.release]
 lto = true

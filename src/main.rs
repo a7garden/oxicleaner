@@ -9,6 +9,7 @@ mod disk;
 mod history;
 mod safety;
 mod schedule;
+mod setup;
 mod sweep;
 
 fn main() {

@@ -26,6 +26,9 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
+    /// 설정 마법사 실행 (인터랙티브).
+    Setup,
+
     /// target/ 정리 실행 (서브커맨드 없이 `oxicleaner` 만 쳐도 동일).
     Sweep {
         /// 보존 일수 — 이 기간 이내 산물은 유지.
@@ -73,6 +76,7 @@ impl Cli {
                 let (root, days) = config::resolve(self.root.as_deref(), None);
                 run_sweep(&root, days, false, false)
             }
+            Some(Command::Setup) => crate::setup::run(),
             Some(Command::Sweep {
                 days,
                 dry_run,
@@ -255,7 +259,7 @@ fn fmt_ts(ts: &str) -> String {
 /// 스케줄러(sweep)가 프로젝트 target/ 안의 바이너리를 직접 가리키면
 /// 자기 자신을 지워버리는 사고가 생긴다. config 디렉토리는 sweep 대상이
 /// 아니므로 안전하다.
-fn install_self_binary() -> Result<PathBuf> {
+pub(crate) fn install_self_binary() -> Result<PathBuf> {
     let src = std::env::current_exe()?;
     let dest = config::config_dir().join("oxicleaner");
     std::fs::create_dir_all(config::config_dir())?;
