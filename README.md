@@ -41,7 +41,7 @@ schedule, safely, with a record of what it did.
    incremental build is still fast.
 3. **Safety guard** — if any `cargo`/`rustc` process is running under the root,
    the run is skipped (rescheduled to next cycle) instead of risking corruption.
-4. **launchd schedule** — `oxicleaner install` writes and loads its own plist.
+4. **launchd schedule** — `oxicleaner enable` writes and loads its own plist.
    The scheduled binary lives in `~/.oxicleaner/` (outside any `target/`), so it
    can never delete itself.
 5. **History** — every run (including skips) is appended to
@@ -74,17 +74,17 @@ oxicleaner sweep --days 60
 oxicleaner sweep --dry-run          # preview only — deletes nothing
 oxicleaner sweep --root ~/projects  # override scan root
 
-# Install the weekly schedule (default: every Sunday 03:00, keep 30d)
-oxicleaner install
-oxicleaner install --weekday 5 --hour 4 --days 45   # Fridays 04:00, keep 45d
+# Enable the weekly schedule (default: every Sunday 03:00, keep 30d)
+oxicleaner enable
+oxicleaner enable --weekday 5 --hour 4 --days 45   # Fridays 04:00, keep 45d
 
 # Inspect
 oxicleaner status       # is the schedule loaded? what did the last run do?
 oxicleaner history      # recent runs (timestamp, mode, freed, disk delta)
 oxicleaner history -n 20
 
-# Remove the schedule
-oxicleaner uninstall
+# Disable the schedule
+oxicleaner disable
 
 # Run with no subcommand → sweep (handy for the scheduled invocation)
 oxicleaner
@@ -95,18 +95,18 @@ oxicleaner
 | Flag | Scope | Description |
 |------|-------|-------------|
 | `-r, --root <PATH>` | global | Scan root (defaults to `config.toml`) |
-| `--days <N>` | sweep, install | Keep artifacts newer than N days |
+| `--days <N>` | sweep, enable | Keep artifacts newer than N days |
 | `--dry-run` | sweep | Preview without deleting |
 | `--force` | sweep | Run even if a build is in progress |
-| `--weekday <0-6>` | install | 0=Sun … 6=Sat (default 0) |
-| `--hour <0-23>` | install | Hour of day (default 3) |
+| `--weekday <0-6>` | enable | 0=Sun … 6=Sat (default 0) |
+| `--hour <0-23>` | enable | Hour of day (default 3) |
 | `-n, --limit <N>` | history | Number of records to show |
 
 ## File locations
 
 | Path | Purpose |
 |------|---------|
-| `~/.oxicleaner/config.toml` | Root + retention setting (written by `install`) |
+| `~/.oxicleaner/config.toml` | Root + retention setting (written by `enable`) |
 | `~/.oxicleaner/oxicleaner` | Scheduled binary copy (kept out of any `target/`) |
 | `~/.oxicleaner/history.jsonl` | One JSON line per run |
 | `~/Library/LaunchAgents/local.oxicleaner.plist` | launchd schedule |

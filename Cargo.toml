@@ -4,6 +4,12 @@ version = "0.1.0"
 edition = "2021"
 description = "Recursive Rust target/ cleaner with launchd scheduling"
 license = "MIT"
+repository = "https://github.com/a7garden/oxicleaner"
+homepage = "https://github.com/a7garden/oxicleaner"
+documentation = "https://github.com/a7garden/oxicleaner#readme"
+readme = "README.md"
+keywords = ["cargo", "cargo-sweep", "target", "cleanup", "launchd"]
+categories = ["command-line-utilities", "development-tools::cargo-plugins"]
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }

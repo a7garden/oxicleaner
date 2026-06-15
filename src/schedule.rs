@@ -22,14 +22,14 @@ pub fn log_dir() -> PathBuf {
         .join("Library/Logs/oxicleaner")
 }
 
-/// 스케줄을 설치(또는 갱신) 한다.
+/// 스케줄을 활성화(설치/갱신) 한다.
 ///
 /// - `weekday`: 0(일) ~ 6(토)
 /// - `hour`: 0 ~ 23
 /// - `days`: 보존 일수 (sweep 에 전달)
 /// - `root`: 재귀 스캔 루트
 /// - `binary`: oxicleaner 실행파일 절대경로 (plist 에 박힘)
-pub fn install(weekday: u32, hour: u32, days: u32, root: &str, binary: &str) -> Result<()> {
+pub fn enable(weekday: u32, hour: u32, days: u32, root: &str, binary: &str) -> Result<()> {
     if weekday > 6 {
         bail!("weekday 는 0(일)~6(토) 이어야 합니다: {weekday}");
     }
@@ -38,7 +38,7 @@ pub fn install(weekday: u32, hour: u32, days: u32, root: &str, binary: &str) -> 
     }
 
     // 기존 스케줄이 있으면 먼저 언로드 (갱신 용이). 조용히 처리.
-    let _ = uninstall();
+    let _ = disable();
 
     fs::create_dir_all(log_dir())?;
 
@@ -64,8 +64,8 @@ pub fn install(weekday: u32, hour: u32, days: u32, root: &str, binary: &str) -> 
     Ok(())
 }
 
-/// 스케줄을 제거한다. plist 파일도 삭제. (로드되어 있지 않아도 조용히 통과.)
-pub fn uninstall() -> Result<()> {
+/// 스케줄을 비활성화(제거)한다. plist 파일도 삭제. (로드되어 있지 않아도 조용히 통과.)
+pub fn disable() -> Result<()> {
     let uid = uid()?;
     let target = format!("gui/{uid}/{LABEL}");
     // bootout 은 이미 로드되어 있지 않으면 에러를 내고 stdout/stderr 에

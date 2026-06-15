@@ -39,8 +39,8 @@ pub enum Command {
         force: bool,
     },
 
-    /// launchd 스케줄 설치/갱신.
-    Install {
+    /// launchd 스케줄 활성화(설치/갱신).
+    Enable {
         /// 요일: 0(일) ~ 6(토). 기본 일요일.
         #[arg(long, default_value_t = 0)]
         weekday: u32,
@@ -52,8 +52,8 @@ pub enum Command {
         days: u32,
     },
 
-    /// launchd 스케줄 제거.
-    Uninstall,
+    /// launchd 스케줄 비활성화(제거).
+    Disable,
 
     /// 스케줄 로드 여부 + 마지막 정리 결과.
     Status,
@@ -81,7 +81,7 @@ impl Cli {
                 let (root, cfg_days) = config::resolve(self.root.as_deref(), Some(days));
                 run_sweep(&root, cfg_days, dry_run, force)
             }
-            Some(Command::Install {
+            Some(Command::Enable {
                 weekday,
                 hour,
                 days,
@@ -97,7 +97,7 @@ impl Cli {
                 // oxicleaner 자신의 target/ 도 sweep 대상이므로 target/ 안의 바이너리를
                 // 직접 가리키면 자기 자신을 지워버리는 사고가 발생한다.
                 let installed_bin = install_self_binary()?;
-                schedule::install(
+                schedule::enable(
                     weekday,
                     hour,
                     cfg_days,
@@ -105,7 +105,7 @@ impl Cli {
                     &installed_bin.to_string_lossy(),
                 )?;
 
-                println!("✅ 스케줄 설치 완료");
+                println!("✅ 스케줄 활성화 완료");
                 println!("   주기    : 매주 {} {:02}:00", weekday_name(weekday), hour);
                 println!("   루트    : {}", root.display());
                 println!("   보존    : {}일", cfg_days);
@@ -116,9 +116,9 @@ impl Cli {
                 println!("   즉시실행: launchctl start {}", schedule::LABEL);
                 Ok(())
             }
-            Some(Command::Uninstall) => {
-                schedule::uninstall()?;
-                println!("✅ 스케줄 제거 완료 ({})", schedule::LABEL);
+            Some(Command::Disable) => {
+                schedule::disable()?;
+                println!("✅ 스케줄 비활성화 완료 ({})", schedule::LABEL);
                 Ok(())
             }
             Some(Command::Status) => {
